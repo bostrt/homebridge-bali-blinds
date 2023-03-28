@@ -1,15 +1,37 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "Bali Blinds",
   "pluginType": "platform",
   "singular": true,
   "schema": {
     "type": "object",
     "properties": {
-      "name": {
-        "title": "Name",
+      "room": {
+        "title": "Bali Motorization Room",
         "type": "string",
         "required": true,
-        "default": "Example Dynamic Platform"
+        "defualt": "Living room"
+      },
+      "baliUsername": {
+        "title": "Bali Username",
+        "type": "string",
+        "required": true
+      },
+      "baliPassword": {
+        "title": "Bali Password",
+        "type": "string",
+        "required": true
+      },
+      "baliAuthUrl": {
+        "title": "Bali Auth URL",
+        "type": "string",
+        "required": true,
+        "default": "https://swf-us-oem-autha2.mios.com"
+      },
+      "lowBattery": {
+        "title": "Low Battery percentage threshold",
+        "type": "number",
+        "required": false,
+        "default": 33
       }
     }
   }
