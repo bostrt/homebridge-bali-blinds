@@ -76,6 +76,8 @@ export class BaliBlind {
         break;
       case 'switch':
         this.service.getCharacteristic(this.platform.Characteristic.TargetPosition).updateValue(data.value ? 100 : 0);
+        this.targetPosition = data.value ? 100 : 0;
+        this.service.getCharacteristic(this.platform.Characteristic.PositionState).updateValue(this.getPositionState());
         break;
       default:
         this.log.debug(`Could not find item for ${this} given ${inspect(data, false, null, true)}`);
