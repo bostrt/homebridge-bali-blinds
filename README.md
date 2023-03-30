@@ -1,169 +1,85 @@
 
-<p align="center">
-
 <img src="https://github.com/homebridge/branding/raw/master/logos/homebridge-wordmark-logo-vertical.png" width="150">
+<img src="https://www.baliblinds.com/globalassets/2.-assets/images/logos/balilogo.svg" width="150">
 
-</p>
+# Homebridge Plugin for Bali Blinds 
 
+This is a [Homebridge](https://homebridge.io/) plugin for [Bali Blinds](https://www.baliblinds.com/motorization/). The Bali Motorization mobile application used to control the blinds only support Amazon Alex and Google Assistant (as of 2023) hence this plugin's existence.
 
-# Homebridge Platform Plugin Template
+(Thanks @hjdhjd, I copied some of your Install and Configuration section :smirk:)
 
-This is a template Homebridge platform plugin and can be used as a base to help you get started developing your own plugin.
+# Installation
 
-This template should be used in conjunction with the [developer documentation](https://developers.homebridge.io/). A full list of all supported service types, and their characteristics is available on this site.
+If you have installed the [Homebridge Config UI](https://github.com/oznu/homebridge-config-ui-x), you can intall this plugin by going to the Plugins tab and searching for `homebridge-bali-blinds` and installing it.
 
-## Clone As Template
-
-Click the link below to create a new GitHub Repository using this template, or click the *Use This Template* button above.
-
-<span align="center">
-
-### [Create New Repository From Template](https://github.com/homebridge/homebridge-plugin-template/generate)
-
-</span>
-
-## Setup Development Environment
-
-To develop Homebridge plugins you must have Node.js 12 or later installed, and a modern code editor such as [VS Code](https://code.visualstudio.com/). This plugin template uses [TypeScript](https://www.typescriptlang.org/) to make development easier and comes with pre-configured settings for [VS Code](https://code.visualstudio.com/) and ESLint. If you are using VS Code install these extensions:
-
-* [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
-
-## Install Development Dependencies
-
-Using a terminal, navigate to the project folder and run this command to install the development dependencies:
+If you prefer to install `homebridge-bali-blinds` from the command line, you can do so by executing:
 
 ```
-npm install
+sudo npm install -g homebridge-bali-blinds
 ```
 
-## Update package.json
+# Configuration
 
-Open the [`package.json`](./package.json) and change the following attributes:
+I strongly recommend using the [Homebridge Config UI](https://github.com/oznu/homebridge-config-ui-x) rather than editing your config.json directly. It does a good job of showing you all the options and always generating a valid configuration so you don't get stuck on typos or looking for stray commas in your config.json.
 
-* `name` - this should be prefixed with `homebridge-` or `@username/homebridge-` and contain no spaces or special characters apart from a dashes
-* `displayName` - this is the "nice" name displayed in the Homebridge UI
-* `repository.url` - Link to your GitHub repo
-* `bugs.url` - Link to your GitHub repo issues page
+For those that prefer configuring things directly, add the accessory in `config.json` in your home directory inside `.homebridge`.
 
-When you are ready to publish the plugin you should set `private` to false, or remove the attribute entirely.
-
-## Update Plugin Defaults
-
-Open the [`src/settings.ts`](./src/settings.ts) file and change the default values:
-
-* `PLATFORM_NAME` - Set this to be the name of your platform. This is the name of the platform that users will use to register the plugin in the Homebridge `config.json`.
-* `PLUGIN_NAME` - Set this to be the same name you set in the [`package.json`](./package.json) file. 
-
-Open the [`config.schema.json`](./config.schema.json) file and change the following attribute:
-
-* `pluginAlias` - set this to match the `PLATFORM_NAME` you defined in the previous step.
-
-## Build Plugin
-
-TypeScript needs to be compiled into JavaScript before it can run. The following command will compile the contents of your [`src`](./src) directory and put the resulting code into the `dist` folder.
-
-```
-npm run build
-```
-
-## Link To Homebridge
-
-Run this command so your global install of Homebridge can discover the plugin in your development environment:
-
-```
-npm link
-```
-
-You can now start Homebridge, use the `-D` flag so you can see debug log messages in your plugin:
-
-```
-homebridge -D
-```
-
-## Watch For Changes and Build Automatically
-
-If you want to have your code compile automatically as you make changes, and restart Homebridge automatically between changes, you first need to add your plugin as a platform in `~/.homebridge/config.json`:
-```
-{
-...
+```json
     "platforms": [
         {
-            "name": "Config",
-            "port": 8581,
-            "platform": "config"
-        },
-        {
-            "name": "<PLUGIN_NAME>",
-            //... any other options, as listed in config.schema.json ...
-            "platform": "<PLATFORM_NAME>"
+			"platform": "Bali Blinds",
+            "baliUsername": "your-username",
+            "baliPassword": "your-password",
+            "lowBattery": 33 // Optional
         }
     ]
-}
 ```
 
-and then you can run:
+## Options
 
-```
-npm run watch
-```
+- `baliUsername`: *(Required)* Username from Bali Motorization mobile app.  It is recommended creating a new user in mobile app with "Basic User" permission levels since no Admin or Advanced permissions are required by this plugin.
+- `baliPassword`: *(Required)* Password for the user above.
+- `lowBattery`: *(Optional)* Default 33%. The percentage threshold at which the low battery status will be set on Homebridge blinds accessories.
 
-This will launch an instance of Homebridge in debug mode which will restart every time you make a change to the source code. It will load the config stored in the default location under `~/.homebridge`. You may need to stop other running instances of Homebridge while using this command to prevent conflicts. You can adjust the Homebridge startup command in the [`nodemon.json`](./nodemon.json) file.
 
-## Customise Plugin
+# Fun Facts and Random Bits
+I'm not an expert with IoT products, MiOS, Ezlo, Vera, or really any of the technologies used in this plugin. If you see something that doesn't make sense or could be improved please let me know by opening a GitHub issue to discuss. 
 
-You can now start customising the plugin template to suit your requirements.
+## Plugin Design
 
-* [`src/platform.ts`](./src/platform.ts) - this is where your device setup and discovery should go.
-* [`src/platformAccessory.ts`](./src/platformAccessory.ts) - this is where your accessory control logic should go, you can rename or create multiple instances of this file for each accessory type you need to implement as part of your platform plugin. You can refer to the [developer documentation](https://developers.homebridge.io/) to see what characteristics you need to implement for each service type.
-* [`config.schema.json`](./config.schema.json) - update the config schema to match the config you expect from the user. See the [Plugin Config Schema Documentation](https://developers.homebridge.io/#/config-schema).
+The design of this plugin is that it communicates with an HTTP API hosted by MiOS and Ezlo. This HTTP API is connected (polled I think) to the Bali Gateway device (Ezlo Atom) that communicates ZWave with the blinds. At first, I considered this solution pretty round-about when I could just speak ZWave directly to the blinds *from* Homebridge but I believe there is some benefit to not requiring more hardware. If you already have a ZWave device connected to Homebridge there are probably other plugins you can use to benefit from the direct communication. 
 
-## Versioning Your Plugin
-
-Given a version number `MAJOR`.`MINOR`.`PATCH`, such as `1.4.3`, increment the:
-
-1. **MAJOR** version when you make breaking changes to your plugin,
-2. **MINOR** version when you add functionality in a backwards compatible manner, and
-3. **PATCH** version when you make backwards compatible bug fixes.
-
-You can use the `npm version` command to help you with this:
-
-```bash
-# major update / breaking changes
-npm version major
-
-# minor update / new features
-npm version update
-
-# patch / bugfixes
-npm version patch
+```mermaid
+flowchart LR;
+	A[Homebridge Plugin] --> B[MiOS/Ezlo HTTP API];
+	B <--> C[Bali Gateway*];
+	C --> D[ZWave];
+	D --> E[Blinds];
+	F[Mobile App] --> B;
+	G[Physical Remote**] --> C;
 ```
 
-## Publish Package
-
-When you are ready to publish your plugin to [npm](https://www.npmjs.com/), make sure you have removed the `private` attribute from the [`package.json`](./package.json) file then run:
-
 ```
-npm publish
+* Bali Gateway is an Ezlo Atom hub usb device
+** The physical remote is Somfy brand device
 ```
 
-If you are publishing a scoped plugin, i.e. `@username/homebridge-xxx` you will need to add `--access=public` to command the first time you publish.
+## Documentation and References
 
-#### Publishing Beta Versions
+During development of this plugin I used various references including but not limited to:
 
-You can publish *beta* versions of your plugin for other users to test before you release it to everyone.
+- Legacy MiOS documentation since it appears Bali Motorization is built on legacy cloud infra: https://developer.mios.com/api/legacy-cloud-api/documents/
+- This gist from @cgmartin https://gist.github.com/cgmartin/466bd2d3724de6c04743d61cf0de2066 which I adapted to Bali https://gist.github.com/bostrt/f8189ce83e6fa6fb573aea2f1e76b723
+- The Bali Motorization Android APK for `PK_Oem` and `AppKey` parameters.
+- Ezlo Hub Kit source code which this plugin is very roughly based on: https://github.com/bblacey/ezlo-hub-kit/
 
-```bash
-# create a new pre-release version (eg. 2.1.0-beta.1)
-npm version prepatch --preid beta
+# Development
 
-# publish to @beta
-npm publish --tag=beta
-```
+See [DEVELOPMENT.md](DEVELOPMENT.md)
 
-Users can then install the  *beta* version by appending `@beta` to the install command, for example:
+## Plugin Development Dashboard
 
-```
-sudo npm install -g homebridge-example-plugin@beta
-```
-
-
+[![GitHub](https://img.shields.io/github/license/bostrt/homebridge-bali-blinds?style=for-the-badge)](https://github.com/bostrt/homebridge-bali-blinds/blob/main/LICENSE)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/bostrt/homebridge-bali-blinds/build.yml?style=for-the-badge)](https://github.com/bostrt/homebridge-bali-blinds/actions)
+[![npm](https://img.shields.io/npm/v/homebridge-bali-blinds?style=for-the-badge)](https://www.npmjs.com/package/homebridge-bali-blinds)
+![Libraries.io dependency status for latest release](https://img.shields.io/librariesio/release/npm/homebridge-bali-blinds?style=for-the-badge)
