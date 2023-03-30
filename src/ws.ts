@@ -22,7 +22,7 @@ declare type ObserverFunc = (message: any) => void;
 export type DiscoveryCallback = (hub: BaliWebsocket) => void;
 
 export class BaliWebsocket {
-  private websocket: WebSocket;
+  private websocket!: WebSocket;
   private _isConnected = false;
   private connectMutex = new Mutex();
 
@@ -30,13 +30,18 @@ export class BaliWebsocket {
   private itemUpdateObservers: Map<EzloIdentifier, ObserverFunc>;
 
   constructor(public relay: ServerRelayCredentials, private log: Logger) {
-    // Create the websocket and register observer dispatch handlers
-    // NOTE: Override ECC ciphers to prevent over-burdening crytpo on Atom w/ESP32
-    this.log.debug(`Opening websocket to ${relay.serverRelay}`);
-    this.websocket = new WebSocket(relay.serverRelay, { rejectUnauthorized: false, ciphers: 'AES256-SHA256' });
+    this.setupWebsocket();
     this.requestObservers = new Map<RequestID, ObserverFunc>();
     this.itemUpdateObservers = new Map<EzloIdentifier, ObserverFunc>();
     this.requestObservers.set('ui_broadcast', this.handleBroadcast.bind(this));
+  }
+
+  private setupWebsocket() {
+    // Create the websocket and register observer dispatch handlers
+    // NOTE: Override ECC ciphers to prevent over-burdening crytpo on Atom w/ESP32
+    this.log.debug(`Opening websocket to ${this.relay.serverRelay}`);
+    this.websocket = new WebSocket(this.relay.serverRelay, { rejectUnauthorized: false, ciphers: 'AES256-SHA256' });
+
     this.websocket.addListener('message', this.distributeMesssage.bind(this));
 
     this.websocket.addListener('error', (err) => {
@@ -46,18 +51,21 @@ export class BaliWebsocket {
     this.websocket.addListener('close', async () => {
       this.log.error('CLOSED');
       await this.disconnect();
+      this.setupWebsocket();
       await this.reconnect();
     });
   }
 
 
-  async disconnect(): Promise<unknown> {
+  async disconnect(): Promise<any> {
     return this.connectMutex.acquire()
       .then(async (release) => {
         this.log.debug('Disconnecting websocket...');
         this._isConnected = false;
-        return new Promise(() => this.websocket.close())
-          .finally(() => release());
+        release();
+      })
+      .catch((err) => {
+        this.log.error(inspect(err, false, null, true));
       });
   }
 
@@ -89,8 +97,9 @@ export class BaliWebsocket {
 
     this.log.debug('Connecting new websocket...');
     return new Promise((resolve, reject) => {
-      this.open()
+      this.waitOpen()
         .then(() => {
+          this.log.debug('Connected.');
           return this.send(JSON.stringify({method: 'loginUserMios',
             id: randomUUID(),
             params: { PK_Device: this.relay.deviceId,
@@ -125,7 +134,7 @@ export class BaliWebsocket {
     });
   }
 
-  open(): Promise<void> {
+  waitOpen(): Promise<void> {
     this.log.debug('Connecting websocket...');
     return new Promise((resolve, reject) => {
       this.websocket.once('open', () => resolve());

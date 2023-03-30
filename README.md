@@ -5,7 +5,7 @@
 
 This is a [Homebridge](https://homebridge.io/) plugin for [Bali Blinds](https://www.baliblinds.com/motorization/). The Bali Motorization mobile application used to control the blinds only support Amazon Alex and Google Assistant (as of 2023) hence this plugin's existence.
 
-(Thanks @hjdhjd, I copied some of your Install and Configuration section :smile:)
+(Thanks [@hjdhjd](https://github.com/hjdhjd/homebridge-blinds-cmd), I copied some of your Install and Configuration section :smile:)
 
 # Installation
 
