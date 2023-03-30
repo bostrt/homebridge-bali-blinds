@@ -18,8 +18,8 @@ export class BaliBlind {
     private readonly baliWebsocket: BaliWebsocket,
     private readonly accessory: PlatformAccessory,
     private readonly ezloid: EzloIdentifier,
-    private readonly manufacturer: string,
-    private readonly model: string,
+    manufacturer: string,
+    model: string,
   ) {
     // initialize target position storage
     this.getCurrentPosition()
