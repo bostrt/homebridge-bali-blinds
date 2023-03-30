@@ -32,6 +32,7 @@ export class BaliWebsocket {
   constructor(public relay: ServerRelayCredentials, private log: Logger) {
     // Create the websocket and register observer dispatch handlers
     // NOTE: Override ECC ciphers to prevent over-burdening crytpo on Atom w/ESP32
+    this.log.debug(`Opening websocket to ${relay.serverRelay}`);
     this.websocket = new WebSocket(relay.serverRelay, { rejectUnauthorized: false, ciphers: 'AES256-SHA256' });
     this.requestObservers = new Map<RequestID, ObserverFunc>();
     this.itemUpdateObservers = new Map<EzloIdentifier, ObserverFunc>();
@@ -42,16 +43,17 @@ export class BaliWebsocket {
       this.log.error('ERROR');
       this.log.error(inspect(err, false, null, true));
     });
-    this.websocket.addListener('close', () => {
+    this.websocket.addListener('close', async () => {
       this.log.error('CLOSED');
-      this.reconnect();
+      await this.disconnect();
+      await this.reconnect();
     });
   }
 
 
-  disconnect(): Promise<unknown> {
+  async disconnect(): Promise<unknown> {
     return this.connectMutex.acquire()
-      .then((release) => {
+      .then(async (release) => {
         this.log.debug('Disconnecting websocket...');
         this._isConnected = false;
         return new Promise(() => this.websocket.close())
@@ -79,8 +81,8 @@ export class BaliWebsocket {
       });
   }
 
-  private doConnect(): Promise<BaliWebsocket> {
-    if (this._isConnected === true) {
+  private async doConnect(): Promise<BaliWebsocket> {
+    if (this.isConnected()) {
       this.log.debug('Websocket already connected');
       return Promise.resolve(this);
     }

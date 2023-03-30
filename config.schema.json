@@ -5,30 +5,21 @@
   "schema": {
     "type": "object",
     "properties": {
-      "room": {
-        "title": "Bali Motorization Room",
-        "type": "string",
-        "required": true,
-        "defualt": "Living room"
-      },
       "baliUsername": {
         "title": "Bali Username",
         "type": "string",
+        "description": "Username from Bali Motorization mobile app.  It is recommended creating a new user in mobile app with \"Basic User\" permission levels since no Admin or Advanced permissions are required by this plugin.",
         "required": true
       },
       "baliPassword": {
         "title": "Bali Password",
         "type": "string",
+        "description": "Password for the user above.",
         "required": true
-      },
-      "baliAuthUrl": {
-        "title": "Bali Auth URL",
-        "type": "string",
-        "required": true,
-        "default": "https://swf-us-oem-autha2.mios.com"
       },
       "lowBattery": {
         "title": "Low Battery percentage threshold",
+        "description": "Default 33%. The percentage threshold at which the low battery status will be set on Homebridge blinds accessories.",
         "type": "number",
         "required": false,
         "default": 33
