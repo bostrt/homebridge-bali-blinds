@@ -1,6 +1,5 @@
 
-<img src="https://github.com/homebridge/branding/raw/master/logos/homebridge-wordmark-logo-vertical.png" width="150">
-<img src="https://www.baliblinds.com/globalassets/2.-assets/images/logos/balilogo.svg" width="150">
+<img src="./homebridge-bali-blinds.png" height="150">
 
 # Homebridge Plugin for Bali Blinds 
 
