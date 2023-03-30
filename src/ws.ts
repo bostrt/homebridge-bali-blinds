@@ -84,8 +84,10 @@ export class BaliWebsocket {
     this.log.debug('Attempting to connect...');
     return this.connectMutex.acquire()
       .then(async (release) => {
-        return this.doConnect()
-          .finally(() => release());
+        return backOff(async () => {
+          return this.doConnect()
+            .finally(() => release());
+        });
       });
   }
 
