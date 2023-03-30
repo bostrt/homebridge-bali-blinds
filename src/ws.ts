@@ -14,13 +14,6 @@ export declare type EzloIdentifier = string;
 declare type RequestID = string;
 declare type ObserverFunc = (message: any) => void;
 
-/**
- * discoverEzloHubs callback that is invoked whenever a hub is discovered
- *
- * @param EzloHub - a ready-to-use EzloHub instance
- */
-export type DiscoveryCallback = (hub: BaliWebsocket) => void;
-
 export class BaliWebsocket {
   private websocket!: WebSocket;
   private _isConnected = false;
@@ -154,32 +147,6 @@ export class BaliWebsocket {
   }
 
   /**
-   * Hub data (devices, items, scenes)
-   *
-   * @returns collection of devices, items, rooms and scenes
-   */
-  public data(): Promise<Array<any>> {
-    const request = {
-      method: 'hub.data.list',
-      'params': {
-        'devices':{
-          'ids':[], 'fields': { 'include':[] },
-        },
-        'items':{
-          'ids':[], 'fields': { 'include':[] },
-        },
-        'rooms':{
-          'ids':[], 'fields': { 'include':[] },
-        },
-        'scenes':{
-          'ids':[], 'fields': { 'include':[] },
-        },
-      },
-    };
-    return this.sendRequest(request);
-  }
-
-  /**
    * Devices paired with the hub
    *
    * @returns collection of devices
@@ -226,25 +193,6 @@ export class BaliWebsocket {
   }
 
   /**
-   * Room collection
-   *
-   * @returns collection of rooms
-   */
-  public rooms(): Promise<any[]> {
-    return this.sendRequest({ method: 'hub.room.list', params: {} }).then(res => res);
-  }
-
-  /**
-   * Room with name
-   *
-   * @param name - name of room
-   * @returns room with name | undefined if room with name doesn't exist
-   */
-  public room(name: EzloIdentifier): Promise<EzloIdentifier> {
-    return this.rooms().then(rooms => rooms.filter(room => room.name === name)[0]);
-  }
-
-  /**
    * Set the value for one or more items.  In the case of multiple items,
    * a z-wave multicast message will be sent to the list of items
    *
@@ -271,10 +219,6 @@ export class BaliWebsocket {
 
   public addItemObserver(id: EzloIdentifier, func: ObserverFunc) {
     this.itemUpdateObservers.set(id, func);
-  }
-
-  private removeItemObserver(id: EzloIdentifier) {
-    this.itemUpdateObservers.delete(id);
   }
 
   private handleBroadcast(response: any) {
