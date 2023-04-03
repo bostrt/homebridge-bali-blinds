@@ -3,13 +3,19 @@
 
 # Homebridge Plugin for Bali Blinds 
 
-This is a [Homebridge](https://homebridge.io/) plugin for [Bali Blinds](https://www.baliblinds.com/motorization/). The Bali Motorization mobile application used to control the blinds only support Amazon Alex and Google Assistant (as of 2023) hence this plugin's existence.
+This is a [Homebridge](https://homebridge.io/) plugin for [Bali Blinds](https://www.baliblinds.com/motorization/). The Bali Motorization mobile application used to control the blinds only supports Amazon Alex and Google Assistant (as of 2023) hence this plugin's existence.
 
 (Thanks [@hjdhjd](https://github.com/hjdhjd/homebridge-blinds-cmd), I copied some of your Install and Configuration section :smile:)
 
 # Installation
 
-Plugin is not yet available for install. Coming soon.
+If you have installed the [Homebridge Config UI](https://github.com/oznu/homebridge-config-ui-x), you can intall this plugin by going to the Plugins tab and searching for `homebridge-bali-blinds` and installing it.
+
+If you prefer to install `homebridge-bali-blinds` from the command line, you can do so by executing:
+
+```
+sudo npm install -g homebridge-bali-blinds
+```
 
 # Configuration
 
@@ -20,7 +26,7 @@ For those that prefer configuring things directly, add the accessory in `config.
 ```json
     "platforms": [
         {
-			"platform": "Bali Blinds",
+            "platform": "BaliBlinds",
             "baliUsername": "your-username",
             "baliPassword": "your-password",
             "lowBattery": 33 // Optional
