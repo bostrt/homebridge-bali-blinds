@@ -53,7 +53,6 @@ export class BaliWebsocket {
   async disconnect(): Promise<any> {
     return this.connectMutex.acquire()
       .then(async (release) => {
-        this.log.debug('Disconnecting websocket...');
         this._isConnected = false;
         release();
       })
@@ -68,13 +67,11 @@ export class BaliWebsocket {
 
   private async reconnect(): Promise<BaliWebsocket> {
     return backOff(() => {
-      this.log.warn('Attempting reconnect...');
       return this.connect();
     });
   }
 
   public async connect(): Promise<BaliWebsocket> {
-    this.log.debug('Attempting to connect...');
     return this.connectMutex.acquire()
       .then(async (release) => {
         return backOff(async () => {
@@ -86,15 +83,12 @@ export class BaliWebsocket {
 
   private async doConnect(): Promise<BaliWebsocket> {
     if (this.isConnected()) {
-      this.log.debug('Websocket already connected');
       return Promise.resolve(this);
     }
 
-    this.log.debug('Connecting new websocket...');
     return new Promise((resolve, reject) => {
       this.waitOpen()
         .then(() => {
-          this.log.debug('Connected.');
           return this.send(JSON.stringify({method: 'loginUserMios',
             id: randomUUID(),
             params: { PK_Device: this.relay.deviceId,
@@ -130,7 +124,6 @@ export class BaliWebsocket {
   }
 
   waitOpen(): Promise<void> {
-    this.log.debug('Connecting websocket...');
     return new Promise((resolve, reject) => {
       this.websocket.once('open', () => resolve());
       this.websocket.once('error', (err) => reject(new Error(`Could not open websocket due to ${err}`)));
@@ -258,10 +251,8 @@ export class BaliWebsocket {
   private async listenForMyRequest(requestId): Promise<any> {
     return new Promise((resolve) => {
       this.addRequestObserver(requestId, resolve);
-      this.log.debug(`Adding listener for ${requestId}`);
     })
       .finally(() => {
-        this.log.debug(`Removing listener for ${requestId}`);
         this.removeRequestObserver(requestId);
       });
   }
@@ -279,14 +270,12 @@ export class BaliWebsocket {
     return new Promise((resolve, reject) => {
       this.connect()
         .then(() => {
-          this.log.debug(`Sending request for ${request.id}`);
           this.websocket.send(JSON.stringify(request));
         })
         .then(() => {
           return this.listenForMyRequest(request.id);
         })
         .then((response) => {
-          this.log.debug(`Response received for ${response.id}`);
           if (response.error !== null) {
             return reject(
               new Error(`Request failed with ${response.error.data} - Request: ${JSON.stringify(request)}`),

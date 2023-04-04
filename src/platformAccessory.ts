@@ -112,7 +112,6 @@ export class BaliBlind {
     return this.baliWebsocket.item('dimmer', this.ezloid)
       .then((data) => {
         const value = data[0].value;
-        this.log.debug(`Found current position ${value} of ${this}`);
         this.currentPosition = value;
         return value;
       })
@@ -140,7 +139,6 @@ export class BaliBlind {
       .then((item) => {
         return this.baliWebsocket.setItemValue(item[0]._id, value)
           .then(() => {
-            this.log.info(`Setting target position of ${this} to ${value}`);
             this.targetPosition = value as number;
           })
           .catch((err) => {
