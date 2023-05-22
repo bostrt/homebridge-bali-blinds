@@ -9,13 +9,9 @@ This is a [Homebridge](https://homebridge.io/) plugin for [Bali Blinds](https://
 
 # Installation
 
-If you have installed the [Homebridge Config UI](https://github.com/oznu/homebridge-config-ui-x), you can intall this plugin by going to the Plugins tab and searching for `homebridge-bali-blinds` and installing it.
+TBD
 
-If you prefer to install `homebridge-bali-blinds` from the command line, you can do so by executing:
-
-```
-sudo npm install -g homebridge-bali-blinds
-```
+I've delisted this plugin from NPM Registry so it cannot be installed due to a major bug after the plugin runs for a couple days (the Bali API session isn't being rebuilt properly). I'm finding time to resolve this bug and rewrite the section of code that has the issue. 
 
 # Configuration
 
