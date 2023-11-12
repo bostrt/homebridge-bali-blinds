@@ -34,7 +34,7 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
     // Dynamic Platform plugins should only register new accessories after this event was fired,
     // in order to ensure they weren't added to homebridge already. This event can also be used
     // to start discovery of new accessories.
-    this.api.on('didFinishLaunching', () => {
+    this.api.on('didFinishLaunching', async () => {
       // Discover and register devices
       this.discoverDevices();
     });
@@ -55,21 +55,15 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
    * Accessories must only be registered once, previously created accessories
    * must not be registered again to prevent "duplicate UUID" errors.
    */
-  discoverDevices() {
+  async discoverDevices() {
     this.log.info('Discover devices');
-    //const br = new BaliResolver(this.config.baliUsername, this.config.baliPassword);
     const br = new BaliResolver(this.config.baliUsername, this.config.baliPassword);
-    br.resolve()
-      .then(async (relay) => {
-        const baliWebsocket = new BaliWebsocket(relay, this.log);
-        await baliWebsocket.connect();
-        const devices = await baliWebsocket.devices();
-        this.setupDevices(devices, baliWebsocket);
-      })
-      .catch((err) => {
-        this.log.error(err);
-      });
-
+    const baliWebsocket = new BaliWebsocket(br, this.log);
+    await baliWebsocket.initialize();
+    await baliWebsocket.connect();
+    const devices = await baliWebsocket.devices();
+    this.log.info(`Discovered ${devices.length} devices`);
+    await this.setupDevices(devices, baliWebsocket);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

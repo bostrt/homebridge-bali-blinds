@@ -133,11 +133,19 @@ export class BaliResolver implements Resolver<never, ServerRelayCredentials> {
     this.deviceResolver = new DeviceResolver();
   }
 
+  public isExpired(): boolean {
+    if (this.portalAuthState == null) {
+      throw new Error("Portal auth unset");
+    }
+    return this.portalAuthState?.expired();
+  }
+
   /**
  * Connect and authenticate with Bali web services.
  * @returns Promise of ServerRelayCredentials
  */
   async resolve(): Promise<ServerRelayCredentials> {
+    console.log("Resolving credentials");
     await this.authMutex.acquire();
 
     return this.portalAuthenticator.resolve(this.userPass)
@@ -163,6 +171,9 @@ export class BaliResolver implements Resolver<never, ServerRelayCredentials> {
           identityToken: this.portalAuthState?.identity,
         } as ServerRelayCredentials;
         return sr;
+      })
+      .finally(() => {
+        this.authMutex.release();
       });
   }
 }
@@ -212,7 +223,12 @@ export class PortalAuth implements AuthToken {
   }
 
   expired(): boolean {
-    return Date.now() < this.expiration;
+    const millisNow = Date.now();
+    const secondsNow = Math.floor(millisNow / 1000); 
+    // Use this commented line for testing. It sets expiration to ~20s.
+    //const expired = secondsNow > this.expiration - 86360;
+    const expired = secondsNow > this.expiration;
+    return expired;
   }
 
   toHeaderRepresentation = (): Record<string, unknown> => {

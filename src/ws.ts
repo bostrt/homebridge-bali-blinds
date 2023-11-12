@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { inspect } from 'util';
 import WebSocket from 'ws';
-import { ServerRelayCredentials } from './auth';
+import { BaliResolver, ServerRelayCredentials } from './auth';
 import { randomUUID } from 'crypto';
 import { Mutex } from 'async-mutex';
 import { Logger } from 'homebridge';
@@ -21,12 +21,20 @@ export class BaliWebsocket {
 
   private requestObservers: Map<RequestID, ObserverFunc>;
   private itemUpdateObservers: Map<EzloIdentifier, ObserverFunc>;
+  private relay!: ServerRelayCredentials;
 
-  constructor(public relay: ServerRelayCredentials, private log: Logger) {
-    this.setupWebsocket();
+  constructor(public baliResolver: BaliResolver, private log: Logger) {
     this.requestObservers = new Map<RequestID, ObserverFunc>();
     this.itemUpdateObservers = new Map<EzloIdentifier, ObserverFunc>();
     this.requestObservers.set('ui_broadcast', this.handleBroadcast.bind(this));
+  }
+
+  public async initialize() {
+    this.baliResolver.resolve()
+      .then(async (relay) => {
+        this.relay = relay;
+        this.setupWebsocket();
+      })
   }
 
   private setupWebsocket() {
@@ -82,7 +90,15 @@ export class BaliWebsocket {
   }
 
   private async doConnect(): Promise<BaliWebsocket> {
-    if (this.isConnected()) {
+    if (this.isConnected() && !this.baliResolver.isExpired()) {
+      return Promise.resolve(this);
+    }
+
+    if (this.baliResolver.isExpired()) {
+      // Time to reauth
+      this.log.warn("Performing reauth due to expired token");
+      this.relay = await this.baliResolver.resolve();
+      this.websocket.close(); // This will initiate reconnect cycle...
       return Promise.resolve(this);
     }
 
