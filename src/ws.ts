@@ -34,21 +34,21 @@ export class BaliWebsocket {
       .then(async (relay) => {
         this.relay = relay;
         this.setupWebsocket();
-      })
+      });
   }
 
   private setupWebsocket() {
     // Create the websocket and register observer dispatch handlers
     // NOTE: Override ECC ciphers to prevent over-burdening crytpo on Atom w/ESP32
-    this.log.debug("setupWebsocket connection mutex acquire");
+    this.log.debug('setupWebsocket connection mutex acquire');
     this.connectMutex.acquire();
     this.log.debug(`Opening websocket to ${this.relay.serverRelay}`);
-    if (this.websocket != null) {
+    if (this.websocket !== null) {
       this.websocket.removeAllListeners();
     }
     this.websocket = new WebSocket(this.relay.serverRelay, { rejectUnauthorized: false, ciphers: 'AES256-SHA256' });
 
-    this.log.debug("New websocket ready");
+    this.log.debug('New websocket ready');
     this.websocket.addListener('message', this.distributeMesssage.bind(this));
 
     this.websocket.addListener('error', (err) => {
@@ -61,7 +61,7 @@ export class BaliWebsocket {
       this.setupWebsocket();
       await this.reconnect();
     });
-    this.log.debug("setupWebsocket connection mutex release");
+    this.log.debug('setupWebsocket connection mutex release');
     this.connectMutex.release();
   }
 
@@ -69,7 +69,7 @@ export class BaliWebsocket {
   async disconnect(): Promise<any> {
     return this.connectMutex.acquire()
       .then(() => {
-        this.log.debug("disconnect() connection mutex acquired");
+        this.log.debug('disconnect() connection mutex acquired');
       })
       .then(() => {
         this._isConnected = false;
@@ -79,8 +79,8 @@ export class BaliWebsocket {
       })
       .finally(() => {
         this.connectMutex.release();
-        this.log.debug("disconnect() connection mutex released");
-      })
+        this.log.debug('disconnect() connection mutex released');
+      });
   }
 
   public isConnected(): boolean {
@@ -88,25 +88,25 @@ export class BaliWebsocket {
   }
 
   private async reconnect() {
-    this.log.debug("Reconnecting");
+    this.log.debug('Reconnecting');
     return this.connect()
       .then(() => {
-        this.log.debug("Reconnected");
+        this.log.debug('Reconnected');
       });
   }
 
   public async connect(): Promise<BaliWebsocket> {
     return this.connectMutex.acquire()
       .then(() => {
-        this.log.debug("connect() connection mutex acquired");
+        this.log.debug('connect() connection mutex acquired');
       })
       .then(() => {
         return backOff(() => {
           return this.doConnect();
-        })
+        });
       })
       .finally(() => {
-        this.log.debug("connect() connection mutex released");
+        this.log.debug('connect() connection mutex released');
         this.connectMutex.release();
       });
   }
@@ -118,7 +118,7 @@ export class BaliWebsocket {
 
     if (this.baliResolver.isExpired()) {
       // Time to reauth
-      this.log.warn("Performing reauth due to expired token");
+      this.log.warn('Performing reauth due to expired token');
       this.relay = await this.baliResolver.resolve();
       this.websocket.close(); // This will initiate reconnect cycle...
       return Promise.resolve(this);
@@ -127,11 +127,15 @@ export class BaliWebsocket {
     return new Promise((resolve, reject) => {
       this.waitOpen()
         .then(() => {
-          return this.send(JSON.stringify({method: 'loginUserMios',
+          return this.send(JSON.stringify({
+            method: 'loginUserMios',
             id: randomUUID(),
-            params: { PK_Device: this.relay.deviceId,
+            params: {
+              PK_Device: this.relay.deviceId,
               MMSAuthSig: this.relay.identitySignature,
-              MMSAuth: this.relay.identityToken }}));
+              MMSAuth: this.relay.identityToken,
+            },
+          }));
         })
         .then((response: any) => {
           if (response.error !== null && response.error.data !== 'user.login.alreadylogged') {
@@ -140,11 +144,13 @@ export class BaliWebsocket {
           this._isConnected = true;
         })
         .then(() => {
-          return this.send(JSON.stringify({method: 'register',
+          return this.send(JSON.stringify({
+            method: 'register',
             id: randomUUID(),
             params: {
               'serial': this.relay.deviceId,
-            }}));
+            },
+          }));
         })
         .then((response: any) => {
           if (response.error !== null) {
@@ -208,7 +214,7 @@ export class BaliWebsocket {
       params: {},
     };
     if (device) {
-      request.params = {deviceIds: [device]};
+      request.params = { deviceIds: [device] };
     }
     return this.sendRequest(request).then(res => res.items);
   }
@@ -233,11 +239,11 @@ export class BaliWebsocket {
   public setItemValue(items: EzloIdentifier | [EzloIdentifier], value: unknown): Promise<any> {
     let params;
     if (typeof items === 'string') {
-      params = {_id: items, value: value};
+      params = { _id: items, value: value };
     } else {
-      params = {ids: items, value: value};  //multicast
+      params = { ids: items, value: value };  //multicast
     }
-    return this.sendRequest({method: 'hub.item.value.set', params: params});
+    return this.sendRequest({ method: 'hub.item.value.set', params: params });
   }
 
   private addRequestObserver(id: RequestID, func: ObserverFunc) {
@@ -254,7 +260,7 @@ export class BaliWebsocket {
 
   private handleBroadcast(response: any) {
     try {
-    // Handle ui_broadcast messages specially and foward to another observer
+      // Handle ui_broadcast messages specially and foward to another observer
       if (response.msg_subclass && response.msg_subclass === 'hub.item.updated') {
         const deviceObs = this.itemUpdateObservers.get(response.result.deviceId);
         if (deviceObs === undefined) {
@@ -288,11 +294,11 @@ export class BaliWebsocket {
 
   private async listenForMyRequest(requestId): Promise<any> {
     return new Promise((resolve) => {
-        this.log.debug("Listening for request " + requestId);
-        this.addRequestObserver(requestId, resolve);
-      })
+      this.log.debug('Listening for request ' + requestId);
+      this.addRequestObserver(requestId, resolve);
+    })
       .finally(() => {
-        this.log.debug("Removing listen for request " + requestId);
+        this.log.debug('Removing listen for request ' + requestId);
         this.removeRequestObserver(requestId);
       });
   }

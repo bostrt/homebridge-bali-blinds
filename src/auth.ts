@@ -134,8 +134,8 @@ export class BaliResolver implements Resolver<never, ServerRelayCredentials> {
   }
 
   public isExpired(): boolean {
-    if (this.portalAuthState == null) {
-      throw new Error("Portal auth unset");
+    if (this.portalAuthState === null) {
+      throw new Error('Portal auth unset');
     }
     return this.portalAuthState?.expired();
   }
@@ -145,7 +145,6 @@ export class BaliResolver implements Resolver<never, ServerRelayCredentials> {
  * @returns Promise of ServerRelayCredentials
  */
   async resolve(): Promise<ServerRelayCredentials> {
-    console.log("Resolving credentials");
     await this.authMutex.acquire();
 
     return this.portalAuthenticator.resolve(this.userPass)
@@ -224,7 +223,7 @@ export class PortalAuth implements AuthToken {
 
   expired(): boolean {
     const millisNow = Date.now();
-    const secondsNow = Math.floor(millisNow / 1000); 
+    const secondsNow = Math.floor(millisNow / 1000);
     // Use this commented line for testing. It sets expiration to ~20s.
     //const expired = secondsNow > this.expiration - 86360;
     const expired = secondsNow > this.expiration;
