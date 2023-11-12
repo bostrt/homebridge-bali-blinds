@@ -2,7 +2,7 @@
   "private": false,
   "displayName": "Bali Blinds",
   "name": "homebridge-bali-blinds",
-  "version": "0.0.3-beta.0",
+  "version": "0.0.5-beta.0",
   "description": "Homebridge integration with Bali Blinds Web Service",
   "license": "Apache-2.0",
   "repository": {
