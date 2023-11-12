@@ -8,6 +8,7 @@ import { BaliWebsocket, EzloIdentifier } from './ws';
 
 export class BaliBlind {
   private service: Service;
+  private batteryService: Service;
   private log: Logger = this.platform.log;
   private targetPosition = -1;
   private currentPosition = -1;
@@ -39,10 +40,9 @@ export class BaliBlind {
       .setCharacteristic(this.platform.Characteristic.Model, model)
       .setCharacteristic(this.platform.Characteristic.SerialNumber, 'Default-Serial');
 
-    // get the LightBulb service if it exists, otherwise create a new LightBulb service
-    // you can create multiple services for each accessory
+    // get the WindowCovering service if it exists, otherwise create a new WindowCovering service
     this.service = this.accessory.getService(this.platform.Service.WindowCovering)
-                || this.accessory.addService(this.platform.Service.WindowCovering);
+      || this.accessory.addService(this.platform.Service.WindowCovering);
 
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
@@ -59,10 +59,15 @@ export class BaliBlind {
       .onGet(this.getTargetPosition.bind(this))
       .onSet(this.setTargetPosition.bind(this));
 
-    this.service.getCharacteristic(this.platform.Characteristic.BatteryLevel)
+
+    // Get the Battery service if it exists, otherwise create a new Battery service
+    this.batteryService = this.accessory.getService(this.platform.Service.Battery)
+      || this.accessory.addService(this.platform.Service.Battery);
+
+    this.batteryService.getCharacteristic(this.platform.Characteristic.BatteryLevel)
       .onGet(this.getBatteryLevel.bind(this));
 
-    this.service.getCharacteristic(this.platform.Characteristic.StatusLowBattery)
+    this.batteryService.getCharacteristic(this.platform.Characteristic.StatusLowBattery)
       .onGet(this.getStatusLowBattery.bind(this));
   }
 
