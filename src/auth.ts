@@ -134,10 +134,10 @@ export class BaliResolver implements Resolver<never, ServerRelayCredentials> {
   }
 
   public isExpired(): boolean {
-    if (this.portalAuthState === null) {
+    if (!this.portalAuthState) {
       throw new Error('Portal auth unset');
     }
-    return this.portalAuthState?.expired();
+    return this.portalAuthState.expired();
   }
 
   /**
