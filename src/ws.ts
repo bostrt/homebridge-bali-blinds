@@ -43,7 +43,7 @@ export class BaliWebsocket {
     this.log.debug('setupWebsocket connection mutex acquire');
     this.connectMutex.acquire();
     this.log.debug(`Opening websocket to ${this.relay.serverRelay}`);
-    if (this.websocket !== null) {
+    if (this.websocket) {
       this.websocket.removeAllListeners();
     }
     this.websocket = new WebSocket(this.relay.serverRelay, { rejectUnauthorized: false, ciphers: 'AES256-SHA256' });
