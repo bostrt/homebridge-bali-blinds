@@ -226,8 +226,8 @@ export class PortalAuth implements AuthToken {
     const millisNow = Date.now();
     const secondsNow = Math.floor(millisNow / 1000); 
     // Use this commented line for testing. It sets expiration to ~20s.
-    //const expired = secondsNow > this.expiration - 86360;
-    const expired = secondsNow > this.expiration;
+    const expired = secondsNow > this.expiration - 86360;
+    //const expired = secondsNow > this.expiration;
     return expired;
   }
 

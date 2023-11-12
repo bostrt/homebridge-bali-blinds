@@ -40,9 +40,15 @@ export class BaliWebsocket {
   private setupWebsocket() {
     // Create the websocket and register observer dispatch handlers
     // NOTE: Override ECC ciphers to prevent over-burdening crytpo on Atom w/ESP32
+    this.log.debug("setupWebsocket connection mutex acquire");
+    this.connectMutex.acquire();
     this.log.debug(`Opening websocket to ${this.relay.serverRelay}`);
+    if (this.websocket != null) {
+      this.websocket.removeAllListeners();
+    }
     this.websocket = new WebSocket(this.relay.serverRelay, { rejectUnauthorized: false, ciphers: 'AES256-SHA256' });
 
+    this.log.debug("New websocket ready");
     this.websocket.addListener('message', this.distributeMesssage.bind(this));
 
     this.websocket.addListener('error', (err) => {
@@ -55,37 +61,53 @@ export class BaliWebsocket {
       this.setupWebsocket();
       await this.reconnect();
     });
+    this.log.debug("setupWebsocket connection mutex release");
+    this.connectMutex.release();
   }
 
 
   async disconnect(): Promise<any> {
     return this.connectMutex.acquire()
-      .then(async (release) => {
+      .then(() => {
+        this.log.debug("disconnect() connection mutex acquired");
+      })
+      .then(() => {
         this._isConnected = false;
-        release();
       })
       .catch((err) => {
         this.log.error(inspect(err, false, null, true));
-      });
+      })
+      .finally(() => {
+        this.connectMutex.release();
+        this.log.debug("disconnect() connection mutex released");
+      })
   }
 
   public isConnected(): boolean {
     return this._isConnected;
   }
 
-  private async reconnect(): Promise<BaliWebsocket> {
-    return backOff(() => {
-      return this.connect();
-    });
+  private async reconnect() {
+    this.log.debug("Reconnecting");
+    return this.connect()
+      .then(() => {
+        this.log.debug("Reconnected");
+      });
   }
 
   public async connect(): Promise<BaliWebsocket> {
     return this.connectMutex.acquire()
-      .then(async (release) => {
-        return backOff(async () => {
-          return this.doConnect()
-            .finally(() => release());
-        });
+      .then(() => {
+        this.log.debug("connect() connection mutex acquired");
+      })
+      .then(() => {
+        return backOff(() => {
+          return this.doConnect();
+        })
+      })
+      .finally(() => {
+        this.log.debug("connect() connection mutex released");
+        this.connectMutex.release();
       });
   }
 
@@ -266,9 +288,11 @@ export class BaliWebsocket {
 
   private async listenForMyRequest(requestId): Promise<any> {
     return new Promise((resolve) => {
-      this.addRequestObserver(requestId, resolve);
-    })
+        this.log.debug("Listening for request " + requestId);
+        this.addRequestObserver(requestId, resolve);
+      })
       .finally(() => {
+        this.log.debug("Removing listen for request " + requestId);
         this.removeRequestObserver(requestId);
       });
   }
@@ -286,6 +310,7 @@ export class BaliWebsocket {
     return new Promise((resolve, reject) => {
       this.connect()
         .then(() => {
+          this.log.debug(`sendRequest id ${request.id}`);
           this.websocket.send(JSON.stringify(request));
         })
         .then(() => {
