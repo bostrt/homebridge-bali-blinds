@@ -61,6 +61,9 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
     const baliWebsocket = new BaliWebsocket(br, this.log);
     await baliWebsocket.initialize();
     await baliWebsocket.connect();
+    this.api.on('shutdown', async() => {
+      baliWebsocket.close();
+    });
     const devices = await baliWebsocket.devices();
     this.log.info(`Discovered ${devices.length} devices`);
     await this.setupDevices(devices, baliWebsocket);

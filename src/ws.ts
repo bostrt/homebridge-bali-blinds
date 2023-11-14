@@ -40,8 +40,9 @@ export class BaliWebsocket {
   private setupWebsocket() {
     // Create the websocket and register observer dispatch handlers
     // NOTE: Override ECC ciphers to prevent over-burdening crytpo on Atom w/ESP32
-    this.log.debug('setupWebsocket connection mutex acquire');
+    this.log.debug('setupWebsocket connection mutex acquiring...');
     this.connectMutex.acquire();
+    this.log.debug('setupWebsocket connection mutex acquired');
     this.log.debug(`Opening websocket to ${this.relay.serverRelay}`);
     if (this.websocket) {
       this.websocket.removeAllListeners();
@@ -61,12 +62,25 @@ export class BaliWebsocket {
       this.setupWebsocket();
       await this.reconnect();
     });
-    this.log.debug('setupWebsocket connection mutex release');
+    this.log.debug('setupWebsocket connection mutex releasing...');
     this.connectMutex.release();
+    this.log.debug('setupWebsocket connection mutex release');
   }
 
+  public close() {
+    this.log.debug('close() connection mutex acquiring...');
+    this.connectMutex.acquire();
+    this.log.debug('close() connection mutex acquired');
+    this.websocket.removeAllListeners('close');
+    this.websocket.close();
+    this._isConnected = false;
+    this.log.debug('close() connection mutex releasing...');
+    this.connectMutex.release();
+    this.log.debug('close() connection mutex released');
+  }
 
   async disconnect(): Promise<any> {
+    this.log.debug('disconnect() connection mutex acquiring...');
     return this.connectMutex.acquire()
       .then(() => {
         this.log.debug('disconnect() connection mutex acquired');
@@ -78,6 +92,7 @@ export class BaliWebsocket {
         this.log.error(inspect(err, false, null, true));
       })
       .finally(() => {
+        this.log.debug('disconnect() connection mutex releasing...');
         this.connectMutex.release();
         this.log.debug('disconnect() connection mutex released');
       });
@@ -96,6 +111,7 @@ export class BaliWebsocket {
   }
 
   public async connect(): Promise<BaliWebsocket> {
+    this.log.debug('connect() connection mutex acquiring...');
     return this.connectMutex.acquire()
       .then(() => {
         this.log.debug('connect() connection mutex acquired');
@@ -106,8 +122,9 @@ export class BaliWebsocket {
         });
       })
       .finally(() => {
-        this.log.debug('connect() connection mutex released');
+        this.log.debug('connect() connection mutex releasing...');
         this.connectMutex.release();
+        this.log.debug('connect() connection mutex released');
       });
   }
 
