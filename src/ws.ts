@@ -30,7 +30,7 @@ export class BaliWebsocket {
   }
 
   public async initialize() {
-    this.baliResolver.resolve()
+    return this.baliResolver.resolve()
       .then(async (relay) => {
         this.relay = relay;
         this.setupWebsocket();
