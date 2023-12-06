@@ -7,7 +7,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bostrt/homebridge-bali-blinds.git"
+    "url": "git+https://github.com/bostrt/homebridge-bali-blinds.git"
   },
   "bugs": {
     "url": "https://github.com/bostrt/homebridge-bali-blinds/issues"
