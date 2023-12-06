@@ -35,6 +35,11 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
     // in order to ensure they weren't added to homebridge already. This event can also be used
     // to start discovery of new accessories.
     this.api.on('didFinishLaunching', async () => {
+      if (config.baliUsername === undefined || config.baliPassword === undefined) {
+        this.log.error('Missing Bali username and password');
+        return;
+      }
+
       // Discover and register devices
       this.discoverDevices();
     });
