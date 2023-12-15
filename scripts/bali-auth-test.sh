@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -x 
 
 command -v jq >/dev/null 2>&1 || { echo >&2 "I require jq but it's not installed (see: https://stedolan.github.io/jq/).  Aborting."; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo >&2 "I require curl but it's not installed (see: https://curl.haxx.se/).  Aborting."; exit 1; }

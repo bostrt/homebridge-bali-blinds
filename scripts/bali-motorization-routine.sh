@@ -95,6 +95,11 @@ wssLogin() {
   read -r line
   echo $line >&2
 
+  # Hub Info
+  echo "{\"id\":\"$UUID\",\"method\":\"hub.items.list\",\"params\":{}}"
+  read -r line
+  echo $line >&2
+
   # List scenes/routines
   echo "{\"id\":\"$UUID\",\"method\":\"hub.scenes.list\",\"params\":{}}"
   read -r line

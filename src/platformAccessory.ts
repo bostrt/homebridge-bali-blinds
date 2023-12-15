@@ -2,21 +2,23 @@ import { Service, PlatformAccessory, CharacteristicValue, Logger } from 'homebri
 import { inspect } from 'util';
 
 import { BaliBlindsPlatform } from './platform';
-import { BaliWebsocket, EzloIdentifier } from './ws';
+import { BaliGateway, EzloIdentifier, Message, MessagePredicate } from 'bali-gateway-kit';
 
-
+export const ItemUpatedPredicate = function(deviceId: EzloIdentifier): MessagePredicate {
+  return (msg: Message) => msg.id === 'hub.item.updated' && msg.result.deviceId === deviceId;
+};
 
 export class BaliBlind {
   private service: Service;
   private batteryService: Service;
   private log: Logger = this.platform.log;
-  private targetPosition = -1;
-  private currentPosition = -1;
+  private targetPosition = 0;
+  private currentPosition = 0;
   private currentBatteryLevel = 100;
 
   constructor(
     private readonly platform: BaliBlindsPlatform,
-    private readonly baliWebsocket: BaliWebsocket,
+    private readonly baliGateway: BaliGateway,
     private readonly accessory: PlatformAccessory,
     private readonly ezloid: EzloIdentifier,
     manufacturer: string,
@@ -33,7 +35,8 @@ export class BaliBlind {
       });
 
     // Listen for updates
-    baliWebsocket.addItemObserver(ezloid, this.handleItemUpdated.bind(this));
+    baliGateway.addObserver(ItemUpatedPredicate(ezloid), this.handleItemUpdated.bind(this));
+
     // set accessory information
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, manufacturer)
@@ -72,7 +75,7 @@ export class BaliBlind {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private handleItemUpdated(data: any) {
+  private handleItemUpdated(data: Message) {
     switch (data.name) {
       case 'dimmer':
         this.service.getCharacteristic(this.platform.Characteristic.CurrentPosition).updateValue(data.value);
@@ -95,7 +98,7 @@ export class BaliBlind {
   }
 
   async getBatteryLevel() {
-    return this.baliWebsocket.item('battery', this.ezloid)
+    return this.baliGateway.item('battery', this.ezloid)
       .then((data) => {
         this.currentBatteryLevel = data[0].value;
         return data[0].value;
@@ -114,7 +117,7 @@ export class BaliBlind {
   }
 
   async getCurrentPosition() {
-    return this.baliWebsocket.item('dimmer', this.ezloid)
+    return this.baliGateway.item('dimmer', this.ezloid)
       .then((data) => {
         const value = data[0].value;
         this.currentPosition = value;
@@ -140,9 +143,9 @@ export class BaliBlind {
   }
 
   async setTargetPosition(value: CharacteristicValue) {
-    return this.baliWebsocket.item('dimmer', this.ezloid)
+    return this.baliGateway.item('dimmer', this.ezloid)
       .then((item) => {
-        return this.baliWebsocket.setItemValue(item[0]._id, value)
+        return this.baliGateway.setItemValue(item[0]._id, value)
           .then(() => {
             this.targetPosition = value as number;
           })
