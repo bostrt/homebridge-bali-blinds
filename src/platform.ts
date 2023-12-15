@@ -2,10 +2,9 @@ import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, 
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BaliBlind } from './platformAccessory';
-import { BaliWebsocket } from './ws';
+import { BaliCloudResolver, BaliGateway, HubIdentifier } from 'bali-gateway-kit';
 
 import EventEmitter from 'events';
-import { BaliResolver } from './auth';
 
 
 export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformPlugin {
@@ -41,7 +40,10 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
       }
 
       // Discover and register devices
-      this.discoverDevices();
+      this.discoverDevices()
+        .catch((err) => {
+          this.log.error(`Error encounted during setup: ${err}`);
+        });
     });
   }
 
@@ -62,20 +64,34 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
    */
   async discoverDevices() {
     this.log.info('Discover devices');
-    const br = new BaliResolver(this.config.baliUsername, this.config.baliPassword);
-    const baliWebsocket = new BaliWebsocket(br, this.log);
-    await baliWebsocket.initialize();
-    await baliWebsocket.connect();
+    const credentialsResolver = new BaliCloudResolver(this.config.baliUsername, this.config.baliPassword);
+    let gatewayId: HubIdentifier;
+
+    if (this.config.baliGatewayId) {
+      gatewayId = this.config.baliGatewayId;
+    } else {
+      const hubs = await credentialsResolver.hubs();
+      if (hubs.length === 0) {
+        this.log.error('No Bali Gateway devices found');
+        return;
+      }
+      gatewayId = hubs[0];
+      this.log.info(`Auto-selecting first Bali Gateway: ${gatewayId}`);
+    }
+
+    const gateway = await BaliGateway.createHub(gatewayId, credentialsResolver);
+    await gateway.connect();
+
     this.api.on('shutdown', async() => {
-      baliWebsocket.close();
+      await gateway.disconnect();
     });
-    const devices = await baliWebsocket.devices();
+    const devices = await gateway.devices();
     this.log.info(`Discovered ${devices.length} devices`);
-    await this.setupDevices(devices, baliWebsocket);
+    await this.setupDevices(devices, gateway);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async setupDevices(devices: any[], baliWebsocket: BaliWebsocket) {
+  async setupDevices(devices: any[], baliGateway: BaliGateway) {
     // loop over the discovered devices and register each one if it has not already been registered
     for (const device of devices) {
       // generate a unique id for the accessory this should be generated from
@@ -103,7 +119,7 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
 
         // create the accessory handler for the restored accessory
         // this is imported from `platformAccessory.ts`
-        new BaliBlind(this, baliWebsocket, existingAccessory, device._id, device.info.manufacturer, device.info.model);
+        new BaliBlind(this, baliGateway, existingAccessory, device._id, device.info.manufacturer, device.info.model);
 
         // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
         // remove platform accessories when no longer present
@@ -122,7 +138,7 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
 
         // create the accessory handler for the newly create accessory
         // this is imported from `platformAccessory.ts`
-        new BaliBlind(this, baliWebsocket, accessory, device._id, device.info.manufacturer, device.info.model);
+        new BaliBlind(this, baliGateway, accessory, device._id, device.info.manufacturer, device.info.model);
 
         // link the accessory to your platform
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
