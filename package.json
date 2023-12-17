@@ -2,7 +2,7 @@
   "private": false,
   "displayName": "Bali Blinds",
   "name": "homebridge-bali-blinds",
-  "version": "0.0.5-beta.4",
+  "version": "0.0.5-beta.5",
   "description": "Homebridge integration with Bali Blinds Web Service",
   "license": "Apache-2.0",
   "repository": {
@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "async-mutex": "^0.4.0",
-    "bali-gateway-kit": "^1.0.1",
+    "bali-gateway-kit": "^1.0.2",
     "exponential-backoff": "^3.1.1",
     "ws": "^8.13.0"
   }
