@@ -26,10 +26,15 @@ For those that prefer configuring things directly, add the accessory in `config.
 ```json
     "platforms": [
         {
-            "platform": "BaliBlinds",
-            "baliUsername": "your-username",
-            "baliPassword": "your-password",
-            "lowBattery": 33 // Optional
+            "gateways": [
+                {
+                    "baliUsername": "your-username",
+                    "baliPassword": "your-password",
+                    "baliGatewayId": "12345678", // Optional
+                    "lowBattery": 33 // Optional
+                }
+            ],
+            "platform": "BaliBlinds"
         }
     ]
 ```
@@ -38,7 +43,45 @@ For those that prefer configuring things directly, add the accessory in `config.
 
 - `baliUsername`: *(Required)* Username from Bali Motorization mobile app.  It is recommended creating a new user in mobile app with "Basic User" permission levels since no Admin or Advanced permissions are required by this plugin.
 - `baliPassword`: *(Required)* Password for the user above.
+- `baliGatewayId`: *(Optional)* The Bali Gateway ID. This can be found in your Bali Motorization mobile app. If you do not specify a Gateway ID, then the first one associated with your account is automatically used.
 - `lowBattery`: *(Optional)* Default 33%. The percentage threshold at which the low battery status will be set on Homebridge blinds accessories.
+
+
+## Multiple Gateways
+
+If you have multiple Bali Gateways/Hubs, you can add each one to your configuration. You can do this in the Homebridge Config UI but clicking the "Add to Gateways" button.
+
+![Screenshot of Homebridge UI](./add-more-gateways.jpg)
+
+Alternatively, you can add a new sectino to the `gateways` array like this:
+
+```json
+    "platforms": [
+        {
+            "gateways": [
+                {
+                    "baliUsername": "your-username",
+                    "baliPassword": "your-password",
+                    "baliGatewayId": "12345678", // Optional
+                    "lowBattery": 33 // Optional
+                },
+                {
+                    "baliUsername": "your-username",
+                    "baliPassword": "your-password",
+                    "baliGatewayId": "98765432", // Optional
+                    "lowBattery": 33 // Optional
+                }
+            ],
+            "platform": "BaliBlinds"
+        }
+    ]
+```
+
+## Where do I find my Gateway ID?
+
+In the Bali Motorization mobile app, you can find it on the home login screen where you select the gateway to connect to:
+
+<img src="./app-gateway-id.jpg" width="200px">
 
 
 # Fun Facts and Random Bits

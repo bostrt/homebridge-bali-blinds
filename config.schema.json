@@ -5,31 +5,40 @@
   "schema": {
     "type": "object",
     "properties": {
-      "baliUsername": {
-        "title": "Bali Username",
-        "type": "string",
-        "description": "Username from Bali Motorization mobile app.  It is recommended creating a new user in mobile app with \"Basic User\" permission levels since no Admin or Advanced permissions are required by this plugin.",
-        "required": true
-      },
-      "baliPassword": {
-        "title": "Bali Password",
-        "type": "string",
-        "description": "Password for the user above.",
-        "required": true
-      },
-      "baliGatewayId": {
-        "title": "Bali Gateway ID",
-        "type": "string",
-        "description": "The ID of your Bali Gateway device. This can be found in the Bali Motorization App on the main page when connecting to your Gateway. If no Gateway ID is entered here, the first one associated with your account is selected.",
-        "required": false
-
-      },
-      "lowBattery": {
-        "title": "Low Battery percentage threshold",
-        "description": "Default 33%. The percentage threshold at which the low battery status will be set on Homebridge blinds accessories.",
-        "type": "number",
-        "required": false,
-        "default": 33
+      "gateways": {
+        "type": "array",
+        "title": "Gateways",
+        "description": "Configure your Bali Gateways",
+        "items": {
+          "type": "object",
+          "properties": {
+            "baliUsername": {
+              "title": "Bali Username",
+              "type": "string",
+              "description": "Username from Bali Motorization mobile app.  It is recommended creating a new user in mobile app with \"Basic User\" permission levels since no Admin or Advanced permissions are required by this plugin.",
+              "required": true
+            },
+            "baliPassword": {
+              "title": "Bali Password",
+              "type": "string",
+              "description": "Password for the user above.",
+              "required": true
+            },
+            "baliGatewayId": {
+              "title": "Bali Gateway ID",
+              "type": "string",
+              "description": "The ID of your Bali Gateway device. This can be found in the Bali Motorization App on the main page when connecting to your Gateway. If no Gateway ID is entered here, the first one associated with your account is selected.",
+              "required": false
+            },
+            "lowBattery": {
+              "title": "Low Battery percentage threshold",
+              "description": "Default 33%. The percentage threshold at which the low battery status will be set on Homebridge blinds accessories.",
+              "type": "number",
+              "required": false,
+              "default": 33
+            }
+          }
+        }
       }
     }
   }

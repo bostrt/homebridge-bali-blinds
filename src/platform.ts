@@ -14,6 +14,8 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = [];
 
+  private known_gateways: string[] = [];
+
   private connectionState = {
     serverRelay: '',
     deviceId: '',
@@ -34,16 +36,35 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
     // in order to ensure they weren't added to homebridge already. This event can also be used
     // to start discovery of new accessories.
     this.api.on('didFinishLaunching', async () => {
-      if (config.baliUsername === undefined || config.baliPassword === undefined) {
-        this.log.error('Missing Bali username and password');
-        return;
+      // Check if old configuration is still being used
+      if (config.baliUsername || config.baliPassword || config.baliGatewayId) {
+        // eslint-disable-next-line max-len
+        this.log.warn('You are using a deprecated configuration. Please follow this guide to update your configuration: https://github.com/bostrt/homebridge-bali-blinds?tab=readme-ov-file#configuration');
+        // Migrate into new configuration and continue
+        config.gateways = [config];
       }
 
-      // Discover and register devices
-      this.discoverDevices()
-        .catch((err) => {
-          this.log.error(`Error encounted during setup: ${err}`);
-        });
+      // Ensure list of gateways is not empty
+      {
+        if (config.gateways === undefined || config.gateways.length === 0) {
+          this.log.error('No Bali Gateways configured');
+          return;
+        }
+      }
+
+      // Ensure each gateway has username and password
+      for (const key in config.gateways) {
+        const gateway = config.gateways[key];
+        if (gateway.baliUsername === undefined || gateway.baliPassword === undefined) {
+          this.log.error('A Bali Gateway configuration is missing username and/or password');
+          continue;
+        }
+        // Discover and register devices for the Gateway
+        await this.discoverDevices(gateway)
+          .catch((err) => {
+            this.log.error(`Error encounted during setup: ${err}`);
+          });
+      }
     });
   }
 
@@ -62,13 +83,13 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
    * Accessories must only be registered once, previously created accessories
    * must not be registered again to prevent "duplicate UUID" errors.
    */
-  async discoverDevices() {
+  async discoverDevices(gateway_config) {
     this.log.info('Discover devices');
-    const credentialsResolver = new BaliCloudResolver(this.config.baliUsername, this.config.baliPassword);
+    const credentialsResolver = new BaliCloudResolver(gateway_config.baliUsername, gateway_config.baliPassword);
     let gatewayId: HubIdentifier;
 
-    if (this.config.baliGatewayId) {
-      gatewayId = this.config.baliGatewayId;
+    if (gateway_config.baliGatewayId) {
+      gatewayId = gateway_config.baliGatewayId;
     } else {
       const hubs = await credentialsResolver.hubs();
       if (hubs.length === 0) {
@@ -79,6 +100,13 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
       this.log.info(`Auto-selecting first Bali Gateway: ${gatewayId}`);
     }
 
+    if (this.known_gateways.includes(gatewayId)) {
+      this.log.warn(`Gateway ${gatewayId} is already configured... Skipping duplicate config`);
+      return;
+    } else {
+      this.known_gateways.push(gatewayId);
+    }
+
     const gateway = await BaliGateway.createHub(gatewayId, credentialsResolver);
     await gateway.connect();
 
@@ -87,7 +115,9 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
     });
     const devices = await gateway.devices();
     this.log.info(`Discovered ${devices.length} devices`);
-    await this.setupDevices(devices, gateway);
+    await this.setupDevices(devices, gateway).then(() => {
+      this.log.info(`Sucessfully configured gateway ${gatewayId}`);
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
