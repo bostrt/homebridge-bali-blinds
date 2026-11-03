@@ -2,10 +2,12 @@ import { Service, PlatformAccessory, CharacteristicValue, Logger } from 'homebri
 import { inspect } from 'util';
 
 import { BaliBlindsPlatform } from './platform';
-import { BaliGateway, EzloIdentifier, Message, MessagePredicate } from 'bali-gateway-kit';
+import { GatewaySettings } from './settings';
+import { BaliGateway, EzloIdentifier, Message, MessagePredicate, UIBroadcastPredicate } from 'bali-gateway-kit';
 
+// Item updates arrive as {id: 'ui_broadcast', msg_subclass: 'hub.item.updated', result: {deviceId, name, value, ...}}
 export const ItemUpatedPredicate = function(deviceId: EzloIdentifier): MessagePredicate {
-  return (msg: Message) => msg.id === 'hub.item.updated' && msg.result.deviceId === deviceId;
+  return (msg: Message) => UIBroadcastPredicate(msg) && msg.msg_subclass === 'hub.item.updated' && msg.result?.deviceId === deviceId;
 };
 
 export class BaliBlind {
@@ -15,6 +17,8 @@ export class BaliBlind {
   private targetPosition = 0;
   private currentPosition = 0;
   private currentBatteryLevel = 100;
+  private dimmerItemId?: EzloIdentifier;
+  private lastSetAt = 0;
 
   constructor(
     private readonly platform: BaliBlindsPlatform,
@@ -23,16 +27,12 @@ export class BaliBlind {
     private readonly ezloid: EzloIdentifier,
     manufacturer: string,
     model: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    items: any[],
+    private readonly settings: GatewaySettings,
   ) {
-    // initialize target position storage
-    this.getCurrentPosition()
-      .then((value) => {
-        this.targetPosition = value;
-        this.currentPosition = value;
-      })
-      .catch((err) => {
-        this.log.error(`Error setting initial target and current position on ${this} due to ${err}`);
-      });
+    // initialize cached state from the items fetched during discovery
+    this.refresh(items, true);
 
     // Listen for updates
     baliGateway.addObserver(ItemUpatedPredicate(ezloid), this.handleItemUpdated.bind(this));
@@ -53,6 +53,9 @@ export class BaliBlind {
 
     // each service must implement at-minimum the "required characteristics" for the given service type
     // see https://developers.homebridge.io/#/service/WindowCovering
+    //
+    // Getters answer from cached state (kept fresh by gateway broadcasts and periodic refresh) so that
+    // opening the Home app doesn't flood the gateway with requests that delay real commands.
 
     this.service.getCharacteristic(this.platform.Characteristic.CurrentPosition)
       .onGet(this.getCurrentPosition.bind(this));
@@ -74,58 +77,82 @@ export class BaliBlind {
       .onGet(this.getStatusLowBattery.bind(this));
   }
 
+  /**
+   * Update cached state from a list of gateway items (from hub.items.list).
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private handleItemUpdated(data: Message) {
-    switch (data.name) {
+  refresh(items: any[], initial = false) {
+    for (const item of items.filter(item => item.deviceId === this.ezloid)) {
+      if (!initial) {
+        this.handleItem(item);
+      } else if (item.name === 'dimmer') {
+        // services don't exist yet during construction, so only seed state here
+        this.dimmerItemId = item._id;
+        this.currentPosition = item.value;
+        this.targetPosition = item.value;
+      } else if (item.name === 'battery') {
+        this.currentBatteryLevel = item.value;
+      }
+    }
+  }
+
+  private handleItemUpdated(msg: Message) {
+    this.log.debug(`Received item update for ${this}: ${inspect(msg.result, false, null, true)}`);
+    this.handleItem(msg.result);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleItem(item: any) {
+    const Characteristic = this.platform.Characteristic;
+    switch (item.name) {
       case 'dimmer':
-        this.service.getCharacteristic(this.platform.Characteristic.CurrentPosition).updateValue(data.value);
-        this.currentPosition = data.value;
-        this.service.getCharacteristic(this.platform.Characteristic.PositionState).updateValue(this.getPositionState());
+        this.dimmerItemId = item._id ?? this.dimmerItemId;
+        this.currentPosition = item.value;
+        // Blind was moved from outside HomeKit (or settled), so follow the gateway's position
+        if (Date.now() - this.lastSetAt > this.settings.targetGracePeriodMs) {
+          this.targetPosition = item.value;
+        }
         break;
       case 'switch':
-        this.service.getCharacteristic(this.platform.Characteristic.TargetPosition).updateValue(data.value ? 100 : 0);
-        this.targetPosition = data.value ? 100 : 0;
-        this.service.getCharacteristic(this.platform.Characteristic.PositionState).updateValue(this.getPositionState());
+        // switch only reflects open/closed, so only use it when it contradicts the target
+        if (!item.value && this.targetPosition > 0) {
+          this.targetPosition = 0;
+        } else if (item.value && this.targetPosition === 0) {
+          this.targetPosition = 100;
+        }
         break;
+      case 'battery':
+        this.currentBatteryLevel = item.value;
+        this.batteryService.getCharacteristic(Characteristic.BatteryLevel).updateValue(item.value);
+        this.batteryService.getCharacteristic(Characteristic.StatusLowBattery).updateValue(this.getStatusLowBattery());
+        return;
       default:
-        this.log.debug(`Could not find item for ${this} given ${inspect(data, false, null, true)}`);
-        break;
+        this.log.debug(`Could not find item for ${this} given ${inspect(item, false, null, true)}`);
+        return;
     }
+    this.service.getCharacteristic(Characteristic.CurrentPosition).updateValue(this.currentPosition);
+    this.service.getCharacteristic(Characteristic.TargetPosition).updateValue(this.targetPosition);
+    this.service.getCharacteristic(Characteristic.PositionState).updateValue(this.getPositionState());
   }
 
   toString(): string {
     return `${this.accessory.displayName} (${this.ezloid})`;
   }
 
-  async getBatteryLevel() {
-    return this.baliGateway.item('battery', this.ezloid)
-      .then((data) => {
-        this.currentBatteryLevel = data[0].value;
-        return data[0].value;
-      })
-      .catch((err) => {
-        this.log.error(`Error getting battery level for ${this} due to ${err}`);
-      });
+  getBatteryLevel() {
+    return this.currentBatteryLevel;
   }
 
   getStatusLowBattery() {
-    if (this.currentBatteryLevel < this.platform.config.lowBattery) {
+    if (this.currentBatteryLevel < this.settings.lowBattery) {
       return this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW;
     } else {
       return this.platform.Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
     }
   }
 
-  async getCurrentPosition() {
-    return this.baliGateway.item('dimmer', this.ezloid)
-      .then((data) => {
-        const value = data[0].value;
-        this.currentPosition = value;
-        return value;
-      })
-      .catch((err) => {
-        this.log.error(`Error getting current position of ${this} due to ${err}`);
-      });
+  getCurrentPosition() {
+    return this.currentPosition;
   }
 
   getPositionState() {
@@ -143,18 +170,20 @@ export class BaliBlind {
   }
 
   async setTargetPosition(value: CharacteristicValue) {
-    return this.baliGateway.item('dimmer', this.ezloid)
-      .then((item) => {
-        return this.baliGateway.setItemValue(item[0]._id, value)
-          .then(() => {
-            this.targetPosition = value as number;
-          })
-          .catch((err) => {
-            this.log.error(`Error setting target position of ${this} due to ${err}`);
-          });
-      })
-      .catch((err) => {
-        this.log.error(`Error setting target position of ${this} due to ${inspect(err)}`);
-      });
+    this.targetPosition = value as number;
+    this.lastSetAt = Date.now();
+    this.service.getCharacteristic(this.platform.Characteristic.PositionState).updateValue(this.getPositionState());
+
+    try {
+      // Item id is cached at startup, so this is normally a single request to the gateway
+      if (this.dimmerItemId === undefined) {
+        const item = await this.baliGateway.item('dimmer', this.ezloid);
+        this.dimmerItemId = item[0]._id;
+      }
+      await this.baliGateway.setItemValue(this.dimmerItemId!, value);
+    } catch (err) {
+      this.log.error(`Error setting target position of ${this} due to ${inspect(err)}`);
+      throw new this.platform.api.hap.HapStatusError(this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
   }
 }

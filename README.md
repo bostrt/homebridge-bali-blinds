@@ -46,6 +46,14 @@ For those that prefer configuring things directly, add the accessory in `config.
 - `baliGatewayId`: *(Optional)* The Bali Gateway ID. This can be found in your Bali Motorization mobile app. If you do not specify a Gateway ID, then the first one associated with your account is automatically used.
 - `lowBattery`: *(Optional)* Default 33%. The percentage threshold at which the low battery status will be set on Homebridge blinds accessories.
 
+### Advanced options
+
+You shouldn't normally need to change these.
+
+- `requestTimeout`: *(Optional)* Default 10 seconds. How long to wait for the Bali Gateway to respond (connecting, logging in, or any command) before giving up and reporting an error, so a stuck connection can recover instead of hanging.
+- `refreshInterval`: *(Optional)* Default 300 seconds (5 minutes). How often to resync all blind positions and battery levels from the Bali Gateway, in case a live update was missed. This also keeps the connection fresh so commands aren't delayed by reconnecting. Set to `0` to disable.
+- `targetGracePeriod`: *(Optional)* Default 60 seconds. After a command from HomeKit, how long to keep showing that target position before following positions reported by the Bali Gateway (e.g. when a blind is moved with the Bali app or a remote).
+
 
 ## Multiple Gateways
 
