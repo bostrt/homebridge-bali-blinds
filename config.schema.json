@@ -36,6 +36,30 @@
               "type": "number",
               "required": false,
               "default": 33
+            },
+            "requestTimeout": {
+              "title": "Request timeout (seconds)",
+              "description": "Default 10. How long to wait for the Bali Gateway to respond (connecting, logging in, or any command) before giving up and reporting an error, so a stuck connection can recover instead of hanging.",
+              "type": "number",
+              "required": false,
+              "default": 10,
+              "minimum": 1
+            },
+            "refreshInterval": {
+              "title": "Refresh interval (seconds)",
+              "description": "Default 300 (5 minutes). How often to resync all blind positions and battery levels from the Bali Gateway, in case a live update was missed. This also keeps the connection fresh so commands aren't delayed by reconnecting. Set to 0 to disable.",
+              "type": "number",
+              "required": false,
+              "default": 300,
+              "minimum": 0
+            },
+            "targetGracePeriod": {
+              "title": "Target position grace period (seconds)",
+              "description": "Default 60. After a command from HomeKit, how long to keep showing that target position before following positions reported by the Bali Gateway (e.g. when a blind is moved with the Bali app or a remote).",
+              "type": "number",
+              "required": false,
+              "default": 60,
+              "minimum": 0
             }
           }
         }

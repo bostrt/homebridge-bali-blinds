@@ -1,10 +1,40 @@
 import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
 
-import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
+import { GatewaySettings, PLATFORM_NAME, PLUGIN_NAME, resolveGatewaySettings } from './settings';
 import { BaliBlind } from './platformAccessory';
 import { BaliCloudResolver, BaliGateway, HubIdentifier } from 'bali-gateway-kit';
 
 import EventEmitter from 'events';
+
+/**
+ * Works around two bali-gateway-kit issues that can leave every later request waiting forever:
+ *
+ * - connect() holds its connect lock while calling initialize(), but never releases it if initialize()
+ *   throws (e.g. a network error while refreshing cloud credentials), so release it ourselves.
+ * - The websocket has no timeouts, so a relay that never answers (during login inside connect(), or
+ *   any request) hangs. initialize() creates a new websocket whenever credentials change, so the
+ *   timeout is reapplied after each call.
+ *
+ * Must be applied after createHub(), so that initialize() is only ever called from within connect().
+ */
+export function hardenGateway(gateway: BaliGateway, timeoutMs: number) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const internals = gateway as any;
+  const applyTimeout = () => {
+    internals.wsp._options.timeout = timeoutMs;
+  };
+  const initialize = gateway.initialize.bind(gateway);
+  gateway.initialize = async () => {
+    try {
+      await initialize();
+      applyTimeout();
+    } catch (err) {
+      internals.connectMutex.release();
+      throw err;
+    }
+  };
+  applyTimeout();
+}
 
 
 export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformPlugin {
@@ -85,6 +115,7 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
    */
   async discoverDevices(gateway_config) {
     this.log.info('Discover devices');
+    const settings = resolveGatewaySettings(gateway_config);
     const credentialsResolver = new BaliCloudResolver(gateway_config.baliUsername, gateway_config.baliPassword);
     let gatewayId: HubIdentifier;
 
@@ -108,20 +139,33 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
     }
 
     const gateway = await BaliGateway.createHub(gatewayId, credentialsResolver);
+    hardenGateway(gateway, settings.requestTimeoutMs);
     await gateway.connect();
 
-    this.api.on('shutdown', async() => {
-      await gateway.disconnect();
-    });
     const devices = await gateway.devices();
     this.log.info(`Discovered ${devices.length} devices`);
-    await this.setupDevices(devices, gateway).then(() => {
-      this.log.info(`Sucessfully configured gateway ${gatewayId}`);
+    // Fetch every item in one request rather than one request per blind
+    const items = await gateway.items();
+    const blinds = await this.setupDevices(devices, items, gateway, settings);
+    this.log.info(`Sucessfully configured gateway ${gatewayId}`);
+
+    // Background resync of all blind state, in case a gateway broadcast was missed. This also keeps the
+    // cloud credentials and websocket fresh, so reconnects happen here instead of on a user's command.
+    const refreshTimer = settings.refreshIntervalMs > 0 ? setInterval(() => {
+      gateway.items()
+        .then((items) => blinds.forEach((blind) => blind.refresh(items)))
+        .catch((err) => this.log.warn(`Error refreshing blinds on gateway ${gatewayId}: ${err}`));
+    }, settings.refreshIntervalMs) : undefined;
+
+    this.api.on('shutdown', async() => {
+      clearInterval(refreshTimer);
+      await gateway.disconnect();
     });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async setupDevices(devices: any[], baliGateway: BaliGateway) {
+  async setupDevices(devices: any[], items: any[], baliGateway: BaliGateway, settings: GatewaySettings): Promise<BaliBlind[]> {
+    const blinds: BaliBlind[] = [];
     // loop over the discovered devices and register each one if it has not already been registered
     for (const device of devices) {
       // generate a unique id for the accessory this should be generated from
@@ -149,7 +193,8 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
 
         // create the accessory handler for the restored accessory
         // this is imported from `platformAccessory.ts`
-        new BaliBlind(this, baliGateway, existingAccessory, device._id, device.info.manufacturer, device.info.model);
+        blinds.push(new BaliBlind(this, baliGateway, existingAccessory, device._id, device.info.manufacturer, device.info.model,
+          items, settings));
 
         // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
         // remove platform accessories when no longer present
@@ -168,11 +213,12 @@ export class BaliBlindsPlatform extends EventEmitter implements DynamicPlatformP
 
         // create the accessory handler for the newly create accessory
         // this is imported from `platformAccessory.ts`
-        new BaliBlind(this, baliGateway, accessory, device._id, device.info.manufacturer, device.info.model);
+        blinds.push(new BaliBlind(this, baliGateway, accessory, device._id, device.info.manufacturer, device.info.model, items, settings));
 
         // link the accessory to your platform
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
       }
     }
+    return blinds;
   }
 }
